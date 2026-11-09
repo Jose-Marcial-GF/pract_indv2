@@ -11,37 +11,54 @@ data = np.loadtxt(
 )
 print(data['t'])
 
+delta = lambda data : np.diff(data)
+v = lambda points, time : delta(points) / delta(time)
+x = data['x']
+y = data['y']
+t = data['t']
+
 
 def get_lineal_velocity(data):
 
-    delta_x = np.diff(data['x'])
-    delta_y = np.diff(data['y'])
-    delta_t = np.diff(data['t'])
+    delta_x = delta(x)
+    delta_y = delta(y)
+    delta_t = delta(t)
 
     return np.sqrt((delta_x**2 + delta_y**2))/delta_t
 
 
-print(np.where(get_lineal_velocity(data)==0))
-
-#fig, ax = plt.subplots()
-#ax.plot(data['t'][1:], get_lineal_velocity(data), color = 'orange')
-
-v = get_lineal_velocity(data)
-
-
-vx = np.diff(data['x'])/np.diff(data['t'])
-vy = np.diff(data['y'])/np.diff(data['t'])
-
-# vx = v*cos(alpha)
-theta = np.unwrap(np.arctan2(vy, vx))
-velocidad_angular = np.diff(theta) / np.diff(data['t'][1:]) 
+def get_angular_velocity(data):
+    vx = v(x, t)
+    vy = v(y, t)
+    theta = np.unwrap(np.arctan2(vy, vx))
+    return np.diff(theta) / np.diff(data['t'][1:]) 
 
 plt.subplot(131)
 plt.plot(data['x'], data['y'])
 plt.scatter(data['x'][0], data['y'][0], color='red')
 plt.subplot(132)
-print(np.max(velocidad_angular))
-plt.plot(data['t'][2:], velocidad_angular)
+print(np.max(get_angular_velocity(data)))
+plt.plot(data['t'][2:], get_angular_velocity(data))
 plt.subplot(133)
 plt.plot( data['t'][1:], get_lineal_velocity(data))
 plt.show()
+
+
+## Apartado B
+# Velocidad Máxima con los T para poder graficarlo
+np.argmax(data['x'])
+
+
+# Velocidad media
+
+# Valocidad mínima
+
+# Aceleración Máxima con los T para poder graficarlo
+
+# Aceleración media
+
+# Aceleración Minima
+
+# Puntos por los que se haya pasado +1 vez
+
+# media de visitas por puntos para saber si repites muchas veces el mismo recorrido
