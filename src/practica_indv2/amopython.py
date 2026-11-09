@@ -18,7 +18,7 @@ y = data['y']
 t = data['t']
 
 
-def get_lineal_velocity(data):
+def lineal_velocity(data):
 
     delta_x = delta(x)
     delta_y = delta(y)
@@ -27,33 +27,51 @@ def get_lineal_velocity(data):
     return np.sqrt((delta_x**2 + delta_y**2))/delta_t
 
 
-def get_angular_velocity(data):
+def angular_velocity(data):
     vx = v(x, t)
     vy = v(y, t)
     theta = np.unwrap(np.arctan2(vy, vx))
-    return np.diff(theta) / np.diff(data['t'][1:]) 
+    return np.diff(theta) / np.diff(data['t'][1:])
 
+"""
 plt.subplot(131)
 plt.plot(data['x'], data['y'])
 plt.scatter(data['x'][0], data['y'][0], color='red')
 plt.subplot(132)
-print(np.max(get_angular_velocity(data)))
-plt.plot(data['t'][2:], get_angular_velocity(data))
+print(np.max(angular_velocity(data)))
+plt.plot(data['t'][2:], angular_velocity(data))
 plt.subplot(133)
-plt.plot( data['t'][1:], get_lineal_velocity(data))
+plt.plot( data['t'][1:], lineal_velocity(data))
 plt.show()
-
+"""
 
 ## Apartado B
 # Velocidad Máxima con los T para poder graficarlo
-np.argmax(data['x'])
-
+print(np.argmax(lineal_velocity(data)))
 
 # Velocidad media
+print(np.mean(lineal_velocity(data)))
 
-# Valocidad mínima
+# Velocidad mínima
+print(np.min(lineal_velocity(data)))
+
+
+# Velocidad Máxima con los T para poder graficarlo
+print(np.argmax(angular_velocity(data)))
+
+# Velocidad media
+print(np.mean(angular_velocity(data)))
+
+# Velocidad mínima
+print(np.min(angular_velocity(data)))
+
+
+def acceleration(data):
+    return v(lineal_velocity(data), t[1:])
+    
 
 # Aceleración Máxima con los T para poder graficarlo
+print(acceleration(data))
 
 # Aceleración media
 
