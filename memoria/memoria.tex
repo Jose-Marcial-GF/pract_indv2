@@ -24,8 +24,8 @@
 \setlength{\floatsep}{6pt}
 \setlength{\intextsep}{6pt}
 
-\graphicspath{{figuras/}}
-\input{datos.tex}   % valores numéricos generados por generar_figuras.py
+\graphicspath{{../src/practica_indv2/plots/}}
+\input{datos.tex}   % valores numéricos generados por src/practica_indv2/plots.py
 
 % ------------------------------------------------------------------ Documento
 \begin{document}
@@ -36,66 +36,39 @@
   {\small Sistemas Robóticos Autónomos -- ULPGC}
 \end{center}
 
-\section{Datos de partida}
+En esta práctica se busca analizar el comportamiento de un robot a partir de los puntos $x_t$, $y_t$, $t$ obtenidos
+durante un recorrido. 
 
-El fichero \texttt{Path\_SRA2526.txt} contiene \Nmuestras{} muestras $(x_k, y_k, t_k)$ de la
-trayectoria de un robot diferencial entre $t=\tIni$ y $t=\tFin$~s (\duracion~s). Se carga con
-\texttt{numpy.loadtxt}\cite{gfg} como un array estructurado con campos \texttt{x}, \texttt{y},
-\texttt{t}\cite{numpy}, y las figuras se generan con Matplotlib\cite{matplotlib}. Las coordenadas
-tienen resolución de 1~mm y el robot se mueve en un área de unos $15\times15$~m
-($x\in[\xMin,\xMax]$, $y\in[\yMin,\yMax]$~m). El muestreo \emph{no es uniforme}, por lo que todos
-los cálculos usan el $\Delta t_k = t_{k+1}-t_k$ real de cada intervalo.
-
-\section{Apartado a): velocidades lineal y angular}
-
-En una plataforma diferencial sin deslizamiento lateral la velocidad es siempre tangente a la
-trayectoria\cite{upv}. Por ello, la velocidad lineal es la distancia entre dos muestras dividida por
-su $\Delta t$, y la orientación es la dirección del desplazamiento. La velocidad angular es la
-variación de esa orientación por unidad de tiempo\cite{wiki}, previamente desenrollada para evitar
-saltos de $2\pi$:
+\section{Cálculo de la velocidad lineal y angular}\label{sec:vel}
+En una plataforma diferencial, sin deslizamiento lateral, la velocidad lineal siempre es tangente a la
+trayectoria, la orientación es la dirección del desplazamiento y el módulo es la derivada de la posición respecto al tiempo\cite{upv}.
 \begin{equation*}
-  v_k = \frac{\sqrt{\Delta x_k^2+\Delta y_k^2}}{\Delta t_k},\qquad
-  \theta_k = \operatorname{atan2}(\Delta y_k,\Delta x_k),\qquad
-  \omega_k = \frac{\theta_{k+1}-\theta_k}{\Delta t_{k+1}} .
+  \bar{V}_l = \frac{\sqrt{\Delta x^2 + \Delta y^2}}{\Delta t}
+\end{equation*}
+La velocidad angular es la variación de la orientación por unidad de tiempo y, al tratarse de un sólido rígido, es la misma para todo el robot\cite{wiki,wikirigido}.
+\begin{equation*}
+  \omega = \frac{\Delta\theta}{\Delta t}
 \end{equation*}
 
-\begin{figure}[!htb]
+Calculamos la orientación a partir de esta relación:
+$$\frac{v_y}{v_x} = \frac{v \sin(\theta)}{v \cos(\theta)} = \tan(\theta) \implies \theta = \arctan\left(\frac{v_y}{v_x}\right)$$
+
+
+\begin{figure}[h]
   \centering
   \includegraphics[width=\textwidth]{velocidades.pdf}
-  \caption{Velocidades lineal $v$ (arriba) y angular $\omega$ (abajo) calculadas a partir de la
-  trayectoria. En trazo fino, el valor de cada intervalo; en trazo grueso, su media móvil de 1~s.}
+  \caption{Velocidad lineal (a) y angular (b) frente al tiempo.}
   \label{fig:vel}
 \end{figure}
 
-La velocidad lineal (fig.~\ref{fig:vel}) es casi siempre baja, con varios tramos rápidos en
-rectas largas. La velocidad angular presenta un ruido muy alto, con picos de $\pm\wMax$~rad/s
-($=\pm\pi/0.08$, un giro aparente de $180^\circ$ en 80~ms). No son giros reales sino un efecto de
-la \textbf{cuantificación de 1~mm}: con pasos medios de \pasoMedio~mm, un error de 1~mm en la
-posición ya cambia la dirección del segmento en $\sim$0.1~rad, y al dividir por
-$\Delta t\approx25$~ms se convierte en varios rad/s. Promediando en 1~s, $\overline{|\omega|}$
-baja de \wAbsMedia{} a \wSuaveAbsMedia~rad/s, valor más próximo al que mediría un giróscopo real.
-
-\section{Apartado b): información útil para un sistema robótico}
-
-La tabla~\ref{tab:estadisticos} reúne los valores medios, medianos, mínimos y máximos de las
-magnitudes que caracterizan el movimiento del robot y el sensor que lo registró. De ellos se
-extrae lo siguiente:
 
 
-\begin{itemize}
-  \item \textbf{Muestreo.} El periodo medio es de \dtMedio~ms ($\approx$\fMuestreo~Hz), pero varía
-    entre \dtMin{} y \dtMax~ms y hay \nHuecos{} intervalos de más de 100~ms
-    (fig.~\ref{fig:analisis}b). Nunca hay dos muestras iguales (paso mínimo de 1~mm) y los
-    intervalos largos aparecen con el robot casi parado: la velocidad media en ellos es 0.06~m/s,
-    frente a 0.46~m/s cuando $\Delta t<30$~ms. Esto sugiere que el registro solo guarda una muestra
-    cuando la posición cambia, y explica que la media por muestra de $v$ (\vMedia~m/s) supere a la
-    media temporal real (\distancia~m en \duracion~s, es decir, \vGlobal~m/s).
-  \item \textbf{Velocidad lineal.} La mediana (0.26~m/s) muestra que el robot trabaja casi siempre
-    despacio, sobre todo en las zonas con bucles (fig.~\ref{fig:analisis}a). El máximo,
-    \vMax~m/s en $t\approx\tvMax$~s, aparece en las rectas diagonales y fija el límite que deben
-    soportar motores y controlador. El mínimo (0.009~m/s) indica que no llega a detenerse por
-    completo. La correlación entre $v$ y $|\omega|$ es de $\corrVW$: el robot frena ligeramente al girar.
-  \end{itemize}
+La velocidad lineal (figura~\ref{fig:vel}) es inferior a 1~m/s durante el \vMenosUno\,\% del recorrido, aunque destacan algunos picos.
+Por otro lado, la velocidad angular tiene un rango más claro alrededor de los $\pm20$~rad/s y se aprecian zonas donde el robot fue en línea recta, donde la velocidad angular fue 0.
+
+\section{Detectar información útil para un sistema robótico}
+Para las magnitudes a evaluar se calcula la media, desviación típica, máximo y mínimo. Estos resultados se recogen en la tabla~\ref{tab:estadisticos}.
+
 
 \begin{table}[H]
   \centering\small
@@ -103,7 +76,7 @@ extrae lo siguiente:
   \label{tab:estadisticos}
   \begin{tabular}{@{}lrrrr@{}}
     \toprule
-    Magnitud & Media & Mediana & Mínimo & Máximo \\
+    Magnitud & Media & Desv. típica & Mínimo & Máximo \\
     \midrule
     \csname @@input\endcsname tabla_estadisticos.tex
     \bottomrule
@@ -111,91 +84,89 @@ extrae lo siguiente:
 \end{table}
 
 \begin{itemize}
-  \item \textbf{Velocidad angular.} La media de $\omega$ es positiva: el giro neto acumulado es de
-    \giroNeto~rad ($\approx$\vueltas{} vueltas en sentido antihorario). Una vez filtrada, $\omega$
-    queda entre $-1.58$ y $1.77$~rad/s. Entre $t\approx570$ y 600~s el robot avanza paralelo al eje
-    $y$, $\Delta x=0$ y $\omega=0$ exactamente en el 93\,\% de las muestras, lo que confirma que el
-    ruido de $\omega$ procede de la cuantificación.
-  \item \textbf{Aceleraciones.} Son las magnitudes más ruidosas, porque se obtienen derivando dos
-    veces posiciones cuantificadas: los extremos de $\pm13$~m/s$^2$ y la aceleración lateral máxima
-    de \aLatMax~m/s$^2$ están sobrestimados. Para dimensionar par motor o riesgo de derrape habría
-    que filtrarlas primero.
+
+  \item \textbf{Velocidad lineal.} Es importante conocer cómo puede variar la velocidad para saber qué margen de frecuencia de monitoreo necesitamos si queremos tomar decisiones durante el recorrido.
+  Su desviación típica (\vStd~m/s) es casi tan grande como la media (\vMedia~m/s): la distribución es muy asimétrica. El robot alcanza las velocidades lineales más altas en las diagonales rectas donde la velocidad angular es menor
+    (figura~\ref{fig:analisis}a), del mismo modo que suele reducir la velocidad lineal cuando aumenta la velocidad angular (figura~\ref{fig:analisis}c).
+    El mínimo (0.009~m/s) da indicios de que el robot no se detuvo en ningún momento del recorrido.
+
+  \item \textbf{Tiempo medio de muestreo.} El periodo medio es de \dtMedio~ms, con una
+    desviación típica de \dtStd~ms; varía entre \dtMin{} y \dtMax~ms y hay \nHuecos{} intervalos de más de 100~ms
+    (figura~\ref{fig:analisis}b). Teniendo en cuenta la velocidad lineal media, el robot podría recorrer a ciegas \ciegasMedia~cm entre muestras. En el peor caso
+    (velocidad máxima durante el intervalo más largo), podría llegar a recorrer \ciegasMax~m sin tomar valores, y esta distancia sí puede ser un problema. No obstante, el mayor desplazamiento real entre dos muestras es de \pasoMax~cm
+    y los intervalos largos aparecen con el robot casi parado: la velocidad media en ellos es 0.06~m/s, frente a 0.46~m/s cuando $\Delta t<30$~ms.
+  
+  \item \textbf{Velocidad angular.} Está inversamente relacionada con la lineal (figura~\ref{fig:analisis}c, $r=\corrVW$): las velocidades lineales altas solo aparecen con $|\omega|$ bajo.
+
+  \item \textbf{Aceleraciones.} Se muestran en las figuras~\ref{fig:analisis}e (lineal) y \ref{fig:analisis}f (angular). La aceleración lineal de mayor módulo (\accMax~m/s$^2$ en $t\approx\tAccMax$~s) coincide con una
+    aceleración angular de \alphaEnAccMax~rad/s$^2$; la angular de mayor módulo (\alphaMax~rad/s$^2$ en $t\approx\tAlphaMax$~s), con una lineal de \accEnAlphaMax~m/s$^2$.
   \item \textbf{Ruta.} Termina a \desplNeto~m del inicio (\desplPct\,\% del recorrido), así que es
-    casi cerrada, y pasa \nRepetidos{} veces por puntos ya visitados.
+    casi cerrada, y pasa \nRepetidos{} veces por puntos ya visitados (figura~\ref{fig:analisis}d).
 \end{itemize}
 
-\begin{figure}[!htb]
+\begin{figure}[H]
   \centering
   \includegraphics[width=\textwidth]{analisis.pdf}
   \caption{(a) Trayectoria con la velocidad lineal en color. (b) Histograma del periodo de muestreo
-  (escala logarítmica).}
+  (escala logarítmica). (c) Velocidad lineal frente a angular. (d) Puntos repetidos.
+  (e) Aceleración lineal. (f) Aceleración angular.}
   \label{fig:analisis}
 \end{figure}
 
-\section{Apartado c): reconstrucción de la trayectoria}
+\section{Reconstrucción de la trayectoria}
 
-Partiendo de la pose inicial conocida, $(x_0,y_0,\theta_0)=(\xCero, \yCero, \thetaCero\text{ rad})$
-($\theta_0=\thetaCeroGrados^\circ$, dirección del primer segmento), se integra el modelo cinemático
-diferencial\cite{upv} con el método de Euler:
-\begin{equation*}
-  \theta_{k+1} = \theta_k + \omega_k\,\Delta t_{k+1},\qquad
-  x_{k+1} = x_k + v_k\,\Delta t_k\cos\theta_k,\qquad
-  y_{k+1} = y_k + v_k\,\Delta t_k\sin\theta_k .
-\end{equation*}
-El error de cada instante es la distancia euclídea entre la posición reconstruida y la real. Como el
-ruido es aleatorio, los casos c2 y c3 se repiten \Nruns{} veces (Monte Carlo con semilla fija) y se
-da la media $\pm$ la desviación típica de cada métrica. Las desviaciones del ruido son
-$\sigma_v = 0.01\,\overline{v} = \sigmaV$~m/s y
-$\sigma_\omega = 0.01\,\overline{|\omega|} = \sigmaW$~rad/s.
+Para reconstruir la trayectoria a partir de las velocidades se debe hacer la operación opuesta a la de la sección~\ref{sec:vel}, es decir, odometría\cite{odom}.
+Para la reconstrucción de los puntos $x$, $y$ es necesario descomponer la velocidad $v$ en las componentes $v_x$, $v_y$.
+  $$v_{x,k} = v_k \cdot \cos(\theta_k), \quad v_{y,k} = v_k \cdot \sin(\theta_k)$$
 
-\begin{table}[!htb]
+El valor de $\theta_k$ se obtiene a partir de la velocidad angular:
+  $$\theta_{k} = \theta_{k-1} + \omega_k \cdot \Delta t_k$$
+
+Conociendo cuánto avanza en las coordenadas $x$, $y$ ($v_x$, $v_y$), calcular las posiciones no es más que incrementar lo avanzado en esa coordenada al punto anterior:
+ $$x_{k} = x_{k-1} + v_{x,k} \cdot \Delta t_k, \quad y_{k} = y_{k-1} + v_{y,k} \cdot \Delta t_k$$
+
+Para hacer esta reconstrucción es necesario partir de una pose inicial conocida $(x_0,y_0,\theta_0)$. Se ha partido de los valores reales $(\xCero, \yCero, \thetaCero\text{ rad})$, para poder evaluar la calidad de la reconstrucción obtenida.
+
+
+Sin ruido, la reconstrucción coincide con la original (figura~\ref{fig:rec}a): los errores máximo y final son $\approx0$ (tabla~\ref{tab:errores}).
+
+\textbf{Añadir ruido en $v$.} 
+Se añade ruido normal cuya media es 0 y cuya desviación estándar es el 1\,\% de la velocidad lineal media.
+El error máximo es de \cDosMax~m y el final de \cDosFinal~m, prácticamente nulos (figura~\ref{fig:rec}b).
+
+
+\textbf{Añadir ruido en $\omega$.} 
+Se añade ruido normal cuya media es 0 y cuya desviación estándar es el 1\,\% de la media de los valores absolutos de la velocidad angular.
+El error máximo y el final son de \cTresFinal~m (figura~\ref{fig:rec}c).
+
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=\textwidth]{reconstruccion.pdf}
+  \caption{Trayectoria original y reconstruida: (a) sin ruido, (b) ruido en $v$, (c) ruido en $\omega$.}
+  \label{fig:rec}
+\end{figure}
+
+\begin{table}[H]
   \centering\small
-  \caption{Error de posición de la trayectoria reconstruida (c2 y c3: media $\pm$ desviación típica
-  en \Nruns{} realizaciones). Recorrido total: \distancia~m.}
+  \caption{Error de posición de la trayectoria reconstruida.}
   \label{tab:errores}
-  \begin{tabular}{@{}lcccc@{}}
+  \begin{tabular}{@{}lrr@{}}
     \toprule
-    Caso & Error final [m] & Error máximo [m] & RMSE [m] & Error final / distancia \\
+    Caso & Error máximo [m] & Error final [m] \\
     \midrule
-    c1: sin ruido                    & \cUnoFinal & \cUnoMax & \cUnoRmse & $\approx 0$ \\
-    c2: ruido en $v$                 & \cDosFinal{} $\pm$ \cDosFinalStd & \cDosMax{} $\pm$ \cDosMaxStd
-                                     & \cDosRmse{} $\pm$ \cDosRmseStd & \cDosPct\,\% \\
-    c3: ruido en $\omega$            & \cTresFinal{} $\pm$ \cTresFinalStd & \cTresMax{} $\pm$ \cTresMaxStd
-                                     & \cTresRmse{} $\pm$ \cTresRmseStd & \cTresPct\,\% \\
+    Sin ruido & \cUnoMax & \cUnoFinal \\
+    Ruido en $v$ & \cDosMax & \cDosFinal \\
+    Ruido en $\omega$ & \cTresMax & \cTresFinal \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-\begin{figure}[!htb]
-  \centering
-  \includegraphics[width=\textwidth]{errores.pdf}
-  \caption{(a) Trayectoria real y reconstruida en una realización de c2 y de c3 (punto negro: pose
-  inicial). (b) Evolución del error de posición en escala logarítmica: media y banda entre los
-  percentiles 5 y 95 de las \Nruns{} realizaciones. El caso c1 ($\sim10^{-13}$~m) queda fuera de escala.}
-  \label{fig:errores}
-\end{figure}
-
-\textbf{c1, sin ruido.} El error es del orden de $10^{-13}$~m, es decir, error de redondeo de la
-máquina: al integrar con la misma discretización con la que se derivaron $v$ y $\omega$, el proceso
-es exactamente reversible.
-
-\textbf{c2, ruido en $v$.} El error final medio es de \cDosFinal~m (\cDosPct\,\% del recorrido). El
-ruido en $v$ solo altera la longitud de cada paso, no su dirección, y al ser de media nula los
-errores se compensan parcialmente: crecen como un paseo aleatorio, lentamente
-(fig.~\ref{fig:errores}b).
-
-\textbf{c3, ruido en $\omega$.} El error final medio es de \cTresFinal~m, unas \ratioErr{} veces mayor
-que en c2, con una dispersión muy grande entre realizaciones. El ruido en $\omega$ se integra en la
-orientación, y un error de orientación se multiplica por toda la distancia recorrida después: la
-trayectoria se deforma y gira (fig.~\ref{fig:errores}a). Además, $\sigma_\omega$ se calculó sobre
-un $\overline{|\omega|}$ inflado por el ruido de cuantificación (apartado a), por lo que equivale a
-algo más del 10\,\% del giro medio real.
 
 \textbf{Conclusión.} En odometría la \textbf{orientación es la variable crítica}: un mismo error
-relativo del 1\,\% produce un error de posición dos órdenes de magnitud mayor si afecta a $\omega$
-que si afecta a $v$. Para una navegación prolongada conviene un giróscopo de calidad y corregir la
-orientación periódicamente con una referencia absoluta (brújula, balizas, mapa o GPS) mediante
-fusión sensorial.
+relativo produce un error de posición dos órdenes de magnitud mayor si afecta a $\omega$
+que si afecta a $v$. Esto se debe a que el ruido en $\omega$ se integra en $\theta$ y no se corrige, de modo que cada error de orientación desvía
+todos los desplazamientos posteriores; el ruido en $v$ solo afecta a la longitud de cada paso y se puede compensar.
 
 % ------------------------------------------------------------------ Referencias
 \begingroup
@@ -204,17 +175,14 @@ fusión sensorial.
 \setlength{\itemsep}{0pt}
 \begin{thebibliography}{9}
   \setlength{\itemsep}{1pt}
-  \bibitem{gfg} GeeksforGeeks, ``Import Text Files Into Numpy Arrays -- Python'', 2026.
-    \url{https://www.geeksforgeeks.org/python/import-text-files-into-numpy-arrays/}
-  \bibitem{numpy} NumPy Developers, ``Structured arrays'', \emph{NumPy v2.5 Manual}.
-    \url{https://numpy.org/doc/stable/user/basics.rec.html}
-  \bibitem{matplotlib} The Matplotlib Development Team, ``Coding shortcuts'',
-    \emph{Matplotlib 3.11.2 documentation}.
-    \url{https://matplotlib.org/stable/tutorials/coding_shortcuts.html}
   \bibitem{upv} Universitat Politècnica de València, ``Rmóvil -- Cinemática -- Diferencial'',
     vídeo en YouTube. \url{https://www.youtube.com/watch?v=SirC01o7kx8}
   \bibitem{wiki} Wikipedia, ``Velocidad angular: velocidad angular en un movimiento plano general''.
     \url{https://es.wikipedia.org/wiki/Velocidad_angular\#Velocidad_angular_en_un_movimiento_plano_general}
+  \bibitem{wikirigido} Wikipedia, ``Velocidad angular: consideraciones sobre cuerpos rígidos''.
+    \url{https://es.wikipedia.org/wiki/Velocidad_angular\#Consideraciones_sobre_cuerpos_r\%C3\%ADgidos}
+  \bibitem{odom} Engineering Educator Academy, ``Kinematics of Differential Drive Robots and Odometry'',
+    vídeo en YouTube. \url{https://www.youtube.com/watch?v=RZlZcDxQ8P4}
 \end{thebibliography}
 \endgroup
 
